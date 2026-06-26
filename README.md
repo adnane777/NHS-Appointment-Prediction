@@ -12,17 +12,28 @@ This was developed as my MSc Data Science dissertation at the University of Salf
 
 | Metric | Result |
 |---|---|
-| Records processed | 9.3M appointments (filtered to 1.2M for modelling) |
-| Best model | Gradient Boosted Trees |
-| F1 score (virtual appointments) | 0.82 |
-| AUC | 0.70 |
-| Models compared | Random Forest, Gradient Boosted Trees, Decision Tree, Naive Bayes, MLPClassifier |
+| Records processed | 9,305,337 NHS appointment records (30 source files merged) |
+| Weather data | 4 years of London weather records (2021–2024) merged on appointment date |
+| Best F1 (Physical appointments) | 0.7599 (MLP) |
+| Best F1 (Virtual appointments) | 0.8167 (Gradient Boosting and MLP, tied) |
+| Models compared | Random Forest, Gradient Boosting, Decision Tree, Naive Bayes, MLPClassifier |
+
+**Full model comparison (F1 score):**
+
+| Model | Physical | Virtual |
+|---|---|---|
+| Gradient Boosting | 0.7336 | 0.8167 |
+| Decision Tree | 0.6207 | 0.7839 |
+| Naive Bayes | 0.5284 | 0.8149 |
+| MLP | 0.7599 | 0.8167 |
+
+*Note: high recall on several virtual-appointment models reflects class imbalance in the virtual appointment subset — a known limitation worth discussing honestly in interviews.*
 
 ## What Makes This Project Different
 
-Most appointment no-show prediction models rely only on appointment metadata (time, day, specialty, history). This project integrates **historical weather data** as an external feature and tests whether environmental conditions affect attendance.
+Most appointment no-show prediction models rely only on appointment metadata (time, day, specialty, history). This project integrates **historical weather data** (temperature, precipitation, humidity, cloud cover) as external features and tests whether environmental conditions affect attendance.
 
-**Key finding:** weather meaningfully affects attendance for **physical** appointments but has almost no effect on **virtual** appointments — which led to building separate models for each appointment mode rather than a single combined model.
+**Key finding:** weather-related features behaved differently across appointment modes — leading to separate modelling pipelines being built for physical and virtual appointments rather than a single combined model, since the underlying attendance drivers differ meaningfully between the two.
 
 ## Methodology
 
@@ -30,20 +41,19 @@ The project follows the **CRISP-DM** framework:
 
 1. **Business Understanding** — define the cost of DNAs and the value of early prediction
 2. **Data Understanding** — explore 9.3M NHS appointment records and merge with London weather data
-3. **Data Preparation** — clean, filter, and engineer features:
-   - Booking-to-appointment lead time
-   - Day-of-week effects
-   - Mode-time interaction terms
-   - Rolling weather averages
+3. **Data Preparation** — clean, merge, and engineer features:
+   - Appointment mode (Face-to-Face, Home Visit, Telephone, etc.) and healthcare professional (HCP) type
+   - Time between booking and appointment
+   - Weather features: temperature, precipitation, humidity, cloud cover
 4. **Modelling** — train and compare 5 classifiers, with separate pipelines for physical and virtual appointments
-5. **Evaluation** — assess using F1, AUC, precision/recall, and feature importance
-6. **Deployment Planning** — translate findings into operationally actionable recommendations (e.g. targeted reminder strategies for high-risk physical appointments on poor-weather days)
+5. **Evaluation** — assess using accuracy, precision, recall, and F1 score
+6. **Deployment Planning** — translate findings into operationally actionable recommendations
 
 ## Tech Stack
 
 - **Python** — pandas, NumPy, scikit-learn
 - **Visualisation** — Matplotlib, Seaborn
-- **Modelling** — Random Forest, Gradient Boosted Trees, Decision Tree, Naive Bayes, MLPClassifier
+- **Modelling** — Random Forest, Gradient Boosting, Decision Tree, Naive Bayes, MLPClassifier
 
 ## Repository Structure
 
@@ -61,9 +71,10 @@ The project follows the **CRISP-DM** framework:
 
 ## Key Takeaways
 
-- Demonstrated that external, non-obvious features (weather) can meaningfully improve prediction when applied to the right subset of data
-- Built separate models for physical vs. virtual appointments after identifying that a single combined model masked an important interaction effect
-- Translated technical model output into a business-ready recommendation rather than stopping at model accuracy
+- Built a full ML pipeline from raw data ingestion (30 separate CSV files, 9.3M+ rows) through to model comparison and evaluation
+- Integrated an external data source (weather) not typically used in appointment prediction, and tested its effect across two appointment modes
+- Compared 5 classification algorithms systematically using consistent evaluation metrics
+- Identified and was transparent about a class imbalance limitation affecting recall on the virtual appointment subset
 
 ## Author
 
