@@ -1,83 +1,63 @@
 # NHS Appointment No-Show Prediction
 
-Predicting missed healthcare appointments (Did Not Attend / DNA events) using machine learning, with weather data integrated as a novel predictive feature.
+Can appointment details and the weather predict who misses an NHS GP appointment (a "DNA", Did Not Attend)? This was my MSc Data Science dissertation at the University of Salford.
 
-## Overview
+## Key results
 
-Missed NHS appointments cost the health service hundreds of millions of pounds annually and disrupt care for patients who need it most. This project builds an end-to-end machine learning pipeline to predict which appointments are at risk of being missed — giving clinics the ability to intervene before it happens (e.g. reminder calls, overbooking, rescheduling).
-
-This was developed as my MSc Data Science dissertation at the University of Salford.
-
-## Key Results
-
-| Metric | Result |
+| | |
 |---|---|
-| Records processed | 9,305,337 NHS appointment records (30 source files merged) |
-| Weather data | 4 years of London weather records (2021–2024) merged on appointment date |
-| Best F1 (Physical appointments) | 0.7599 (MLP) |
-| Best F1 (Virtual appointments) | 0.8167 (Gradient Boosting and MLP, tied) |
-| Models compared | Random Forest, Gradient Boosting, Decision Tree, Naive Bayes, MLPClassifier |
+| Records processed | 9,305,337 NHS appointment records, merged from 30 source files |
+| Weather data | 4 years of London daily weather (2021–2024): temperature, precipitation, humidity, cloud cover |
+| Modelling data | London regions only: 1,771,609 rows after the weather join; 1,186,775 Attended/DNA appointments |
+| Design | Separate pipelines for physical (face-to-face, home visit) and virtual (telephone, video) appointments |
+| Models | Random Forest, Gradient Boosting, Decision Tree, Naive Bayes, MLP |
 
-**Full model comparison (F1 score):**
+**The honest headline: no model clearly beat a "predict everyone attends" baseline.** Most appointments are attended (about 61% of physical and 69% of virtual ones here), and the best-scoring models learned to predict "Attended" every time. That is why their recall is 1.0 and their F1 matches the baseline.
 
-| Model | Physical | Virtual |
-|---|---|---|
-| Gradient Boosting | 0.7336 | 0.8167 |
-| Decision Tree | 0.6207 | 0.7839 |
-| Naive Bayes | 0.5284 | 0.8149 |
-| MLP | 0.7599 | 0.8167 |
+### Full results (test set; the positive class is *Attended*)
 
-*Note: high recall on several virtual-appointment models reflects class imbalance in the virtual appointment subset — a known limitation worth discussing honestly in interviews.*
+| Model | Segment | Accuracy | Precision | Recall | F1 |
+|---|---|---|---|---|---|
+| *Baseline: predict all Attended* | Physical | 0.613 | 0.613 | 1.000 | 0.760 |
+| Random Forest | Physical | 0.528 | 0.600 | 0.686 | 0.640 |
+| Gradient Boosting | Physical | 0.610 | 0.631 | 0.875 | 0.734 |
+| Decision Tree | Physical | 0.522 | 0.604 | 0.639 | 0.621 |
+| Naive Bayes | Physical | 0.572 | 0.812 | 0.392 | 0.528 |
+| MLP | Physical | 0.613 | 0.613 | 1.000 | 0.760 |
+| *Baseline: predict all Attended* | Virtual | 0.690 | 0.690 | 1.000 | 0.817 |
+| Random Forest | Virtual | 0.661 | 0.685 | 0.944 | 0.794 |
+| Gradient Boosting | Virtual | 0.690 | 0.690 | 1.000 | 0.817 |
+| Decision Tree | Virtual | 0.650 | 0.682 | 0.921 | 0.784 |
+| Naive Bayes | Virtual | 0.689 | 0.691 | 0.993 | 0.815 |
+| MLP | Virtual | 0.690 | 0.690 | 1.000 | 0.817 |
 
-## What Makes This Project Different
+A grid-searched MLP (24 settings, 3-fold cross-validation) did not change the picture.
 
-Most appointment no-show prediction models rely only on appointment metadata (time, day, specialty, history). This project integrates **historical weather data** (temperature, precipitation, humidity, cloud cover) as external features and tests whether environmental conditions affect attendance.
+## What I learned
 
-**Key finding:** weather-related features behaved differently across appointment modes — leading to separate modelling pipelines being built for physical and virtual appointments rather than a single combined model, since the underlying attendance drivers differ meaningfully between the two.
+- **F1 on the majority class can hide a model that has learned nothing.** The useful question is how many missed appointments a model catches, which means measuring recall and precision on the DNA class.
+- **The weather signal is weak next to class imbalance.** The weather features behaved differently for physical and virtual appointments, which justified the split design, but they weren't enough on their own to separate DNAs from attendances.
+- **Next steps:** class weighting or resampling, DNA-class metrics and precision-recall curves, threshold tuning, and patient-level history features (previous DNAs are a strong predictor in published studies), which this aggregated dataset doesn't include.
 
-## Methodology
+## Method (CRISP-DM)
 
-The project follows the **CRISP-DM** framework:
+1. **Business understanding:** missed appointments cost the NHS money and clinic time, so early warning would let clinics send reminders or rebook.
+2. **Data understanding:** explored the 9.3M national records, then focused on London to match the weather data.
+3. **Data preparation:** merged and validated 30 CSV files, joined weather on appointment date, and engineered features: appointment mode, healthcare professional type, booking lead time, day of week, and a mode × time interaction.
+4. **Modelling:** five classifiers in scikit-learn pipelines with one-hot encoding, run separately for physical and virtual appointments.
+5. **Evaluation:** accuracy, precision, recall and F1, compared against the all-Attended baseline.
 
-1. **Business Understanding** — define the cost of DNAs and the value of early prediction
-2. **Data Understanding** — explore 9.3M NHS appointment records and merge with London weather data
-3. **Data Preparation** — clean, merge, and engineer features:
-   - Appointment mode (Face-to-Face, Home Visit, Telephone, etc.) and healthcare professional (HCP) type
-   - Time between booking and appointment
-   - Weather features: temperature, precipitation, humidity, cloud cover
-4. **Modelling** — train and compare 5 classifiers, with separate pipelines for physical and virtual appointments
-5. **Evaluation** — assess using accuracy, precision, recall, and F1 score
-6. **Deployment Planning** — translate findings into operationally actionable recommendations
+## Files
 
-## Tech Stack
+- `NHS_Appointment_Prediction.ipynb`: the full pipeline, from loading and merging through EDA and modelling to the results charts
 
-- **Python** — pandas, NumPy, scikit-learn
-- **Visualisation** — Matplotlib, Seaborn
-- **Modelling** — Random Forest, Gradient Boosting, Decision Tree, Naive Bayes, MLPClassifier
+The raw NHS and weather CSVs aren't included because of their size. The NHS data is the public *Appointments in General Practice* sub-ICB dataset from NHS Digital.
 
-## Repository Structure
+## Tech stack
 
-```
-├── data/                  # Data loading and preprocessing notebooks
-├── notebooks/
-│   ├── 01_data_loading.ipynb
-│   ├── 02_eda.ipynb
-│   ├── 03_feature_engineering.ipynb
-│   ├── 04_modelling.ipynb
-│   └── 05_results.ipynb
-├── README.md
-└── requirements.txt
-```
-
-## Key Takeaways
-
-- Built a full ML pipeline from raw data ingestion (30 separate CSV files, 9.3M+ rows) through to model comparison and evaluation
-- Integrated an external data source (weather) not typically used in appointment prediction, and tested its effect across two appointment modes
-- Compared 5 classification algorithms systematically using consistent evaluation metrics
-- Identified and was transparent about a class imbalance limitation affecting recall on the virtual appointment subset
+Python · pandas · NumPy · scikit-learn · Matplotlib · Seaborn
 
 ## Author
 
-**Mohammed Adnan Englampurath**
-MSc Data Science, University of Salford
-[LinkedIn](https://linkedin.com/in/your-profile) · [GitHub](https://github.com/adnane777)
+**Mohammed Adnan Englampurath**, MSc Data Science, University of Salford
+[LinkedIn](https://www.linkedin.com/in/madnanep) · [GitHub](https://github.com/adnane777)
